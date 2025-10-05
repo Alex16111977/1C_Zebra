@@ -1,9 +1,17 @@
 # -*- coding: utf-8 -*-
 """Главное окно приложения"""
 
-from PySide6.QtWidgets import (QMainWindow, QDockWidget, QWidget, QGridLayout)
+from PySide6.QtWidgets import (
+    QMainWindow,
+    QDockWidget,
+    QWidget,
+    QGridLayout,
+    QMenuBar,
+    QMenu,
+    QMessageBox,
+)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QUndoStack
+from PySide6.QtGui import QAction, QActionGroup, QUndoStack
 from .canvas_view import CanvasView
 from .toolbar import EditorToolbar
 from .sidebar import Sidebar
@@ -100,10 +108,14 @@ class MainWindow(QMainWindow,
         grid_layout.addWidget(self.h_ruler, 0, 2)
         grid_layout.addWidget(self.v_ruler, 1, 1)
         grid_layout.addWidget(self.canvas, 1, 2)
-        
+
         self.setCentralWidget(central_widget)
         logger.info("Central widget with rulers configured")
-        
+
+        # Menu bar
+        self._create_actions()
+        self._create_menus()
+
         # Toolbar
         self.toolbar = EditorToolbar(self)
         self.addToolBar(self.toolbar)
@@ -133,9 +145,218 @@ class MainWindow(QMainWindow,
         
         # Setup shortcuts
         self._setup_shortcuts()
-        
+
         logger.info("MainWindow fully initialized")
-    
+
+    def _create_actions(self):
+        """Создать QActions для меню"""
+        self.new_template_action = QAction("Новый шаблон", self)
+        self.new_template_action.setShortcut("Ctrl+N")
+        self.new_template_action.triggered.connect(self._create_new_template)
+
+        self.open_template_action = QAction("Открыть...", self)
+        self.open_template_action.setShortcut("Ctrl+O")
+        self.open_template_action.triggered.connect(self._load_template)
+
+        self.save_template_action = QAction("Сохранить", self)
+        self.save_template_action.setShortcut("Ctrl+S")
+        self.save_template_action.triggered.connect(self._save_template)
+
+        self.export_zpl_action = QAction("Экспорт ZPL", self)
+        self.export_zpl_action.setShortcut("Ctrl+E")
+        self.export_zpl_action.triggered.connect(self._export_zpl)
+
+        self.preview_action = QAction("Предпросмотр", self)
+        self.preview_action.setShortcut("Ctrl+P")
+        self.preview_action.triggered.connect(self._show_preview)
+
+        self.print_action = QAction("Печать...", self)
+        self.print_action.setShortcut("Ctrl+Shift+P")
+        self.print_action.triggered.connect(self._export_zpl)
+
+        self.undo_action = QAction("Отменить", self)
+        self.undo_action.setShortcut("Ctrl+Z")
+        self.undo_action.triggered.connect(self._undo)
+
+        self.redo_action = QAction("Повторить", self)
+        self.redo_action.setShortcut("Ctrl+Y")
+        self.redo_action.triggered.connect(self._redo)
+
+        self.copy_action = QAction("Копировать", self)
+        self.copy_action.setShortcut("Ctrl+C")
+        self.copy_action.triggered.connect(self._copy_selected)
+
+        self.paste_action = QAction("Вставить", self)
+        self.paste_action.setShortcut("Ctrl+V")
+        self.paste_action.triggered.connect(self._paste_from_clipboard)
+
+        self.delete_action = QAction("Удалить", self)
+        self.delete_action.setShortcut("Del")
+        self.delete_action.triggered.connect(self._delete_selected)
+
+        self.add_text_menu_action = QAction("Текст", self)
+        self.add_text_menu_action.setShortcut("Ctrl+T")
+        self.add_text_menu_action.triggered.connect(self._add_text)
+
+        self.add_ean13_menu_action = QAction("EAN-13", self)
+        self.add_ean13_menu_action.triggered.connect(self._add_ean13)
+
+        self.add_code128_menu_action = QAction("Code 128", self)
+        self.add_code128_menu_action.triggered.connect(self._add_code128)
+
+        self.add_qrcode_menu_action = QAction("QR Code", self)
+        self.add_qrcode_menu_action.triggered.connect(self._add_qrcode)
+
+        self.add_rectangle_menu_action = QAction("Прямоугольник", self)
+        self.add_rectangle_menu_action.triggered.connect(self._add_rectangle)
+
+        self.add_circle_menu_action = QAction("Круг", self)
+        self.add_circle_menu_action.triggered.connect(self._add_circle)
+
+        self.add_line_menu_action = QAction("Линия", self)
+        self.add_line_menu_action.triggered.connect(self._add_line)
+
+        self.add_image_menu_action = QAction("Изображение", self)
+        self.add_image_menu_action.setShortcut("Ctrl+I")
+        self.add_image_menu_action.triggered.connect(self._add_image)
+
+        self.guides_toggle_action = QAction("Умные направляющие", self)
+        self.guides_toggle_action.setCheckable(True)
+        self.guides_toggle_action.setChecked(True)
+        self.guides_toggle_action.toggled.connect(
+            lambda checked: self._toggle_guides(Qt.Checked if checked else Qt.Unchecked)
+        )
+
+        self.grid_toggle_action = QAction("Сетка (Snap)", self)
+        self.grid_toggle_action.setCheckable(True)
+        self.grid_toggle_action.setChecked(True)
+        self.grid_toggle_action.toggled.connect(
+            lambda checked: self._toggle_snap(Qt.Checked if checked else Qt.Unchecked)
+        )
+
+        self.bring_to_front_action = QAction("На передний план", self)
+        self.bring_to_front_action.triggered.connect(self._bring_to_front)
+
+        self.send_to_back_action = QAction("На задний план", self)
+        self.send_to_back_action.triggered.connect(self._send_to_back)
+
+        self.about_action = QAction("О программе", self)
+        self.about_action.triggered.connect(self._show_about_dialog)
+
+        self.barcode_actions = QActionGroup(self)
+        self.barcode_actions.setExclusive(False)
+        for action in (
+            self.add_ean13_menu_action,
+            self.add_code128_menu_action,
+            self.add_qrcode_menu_action,
+        ):
+            self.barcode_actions.addAction(action)
+
+        self.shape_actions = QActionGroup(self)
+        self.shape_actions.setExclusive(False)
+        for action in (
+            self.add_rectangle_menu_action,
+            self.add_circle_menu_action,
+            self.add_line_menu_action,
+        ):
+            self.shape_actions.addAction(action)
+
+    def _create_menus(self):
+        """Создать меню приложения"""
+        menubar: QMenuBar = self.menuBar()
+        menubar.clear()
+
+        file_menu = menubar.addMenu("Файл")
+        file_menu.addAction(self.new_template_action)
+        file_menu.addSeparator()
+        file_menu.addAction(self.open_template_action)
+        file_menu.addAction(self.save_template_action)
+        file_menu.addSeparator()
+        file_menu.addAction(self.export_zpl_action)
+
+        edit_menu = menubar.addMenu("Редактирование")
+        edit_menu.addAction(self.undo_action)
+        edit_menu.addAction(self.redo_action)
+        edit_menu.addSeparator()
+        edit_menu.addAction(self.copy_action)
+        edit_menu.addAction(self.paste_action)
+        edit_menu.addAction(self.delete_action)
+
+        insert_menu = menubar.addMenu("Вставка")
+        insert_menu.addAction(self.add_text_menu_action)
+
+        barcode_menu = QMenu("Штрих-код", self)
+        barcode_menu.addAction(self.add_ean13_menu_action)
+        barcode_menu.addAction(self.add_code128_menu_action)
+        barcode_menu.addAction(self.add_qrcode_menu_action)
+        insert_menu.addMenu(barcode_menu)
+
+        shapes_menu = QMenu("Фигуры", self)
+        shapes_menu.addAction(self.add_rectangle_menu_action)
+        shapes_menu.addAction(self.add_circle_menu_action)
+        shapes_menu.addAction(self.add_line_menu_action)
+        insert_menu.addMenu(shapes_menu)
+
+        insert_menu.addSeparator()
+        insert_menu.addAction(self.add_image_menu_action)
+
+        view_menu = menubar.addMenu("Вид")
+        view_menu.addAction(self.guides_toggle_action)
+        view_menu.addAction(self.grid_toggle_action)
+
+        arrange_menu = menubar.addMenu("Упорядочить")
+        arrange_menu.addAction(self.bring_to_front_action)
+        arrange_menu.addAction(self.send_to_back_action)
+
+        tools_menu = menubar.addMenu("Инструменты")
+        tools_menu.addAction(self.preview_action)
+        tools_menu.addAction(self.print_action)
+
+        help_menu = menubar.addMenu("Справка")
+        help_menu.addAction(self.about_action)
+
+    def _create_new_template(self):
+        """Создать новый пустой шаблон"""
+        logger.info("[MENU] Creating new template")
+
+        self.canvas.clear_and_redraw_grid()
+        self.elements.clear()
+        self.graphics_items.clear()
+        self.undo_stack.clear()
+        self.selected_item = None
+        self.clipboard_element = None
+
+        self.smart_guides.clear_guides()
+        self.h_ruler.clear_highlight()
+        self.v_ruler.clear_highlight()
+        self.property_panel.set_element(None, None)
+
+        logger.info("[MENU] Canvas reset to blank template")
+
+    def _show_about_dialog(self):
+        """Показать окно «О программе»"""
+        QMessageBox.about(
+            self,
+            "О программе",
+            "<b>ZPL Label Designer</b><br>"
+            "Инструмент для проектирования этикеток ZPL.<br>"
+            "© 2024 Zebra Label Tools",
+        )
+
+    def _toggle_guides(self, state):
+        super()._toggle_guides(state)
+        if hasattr(self, "guides_toggle_action"):
+            self.guides_toggle_action.blockSignals(True)
+            self.guides_toggle_action.setChecked(state == Qt.Checked)
+            self.guides_toggle_action.blockSignals(False)
+
+    def _toggle_snap(self, state):
+        super()._toggle_snap(state)
+        if hasattr(self, "grid_toggle_action"):
+            self.grid_toggle_action.blockSignals(True)
+            self.grid_toggle_action.setChecked(state == Qt.Checked)
+            self.grid_toggle_action.blockSignals(False)
+
     def _connect_signals(self):
         """Connect all signals"""
         # Canvas signals

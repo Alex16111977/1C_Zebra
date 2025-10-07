@@ -99,7 +99,11 @@ class ClipboardMixin:
     def _create_graphics_item(self, element):
         """Створити graphics item для елемента"""
         if isinstance(element, TextElement):
-            graphics_item = GraphicsTextItem(element, dpi=self.canvas.dpi)
+            graphics_item = GraphicsTextItem(
+                element,
+                dpi=self.canvas.dpi,
+                canvas=self.canvas,
+            )
         else:
             from core.elements.barcode_element import BarcodeElement, GraphicsBarcodeItem
             if isinstance(element, BarcodeElement):

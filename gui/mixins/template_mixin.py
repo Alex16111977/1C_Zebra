@@ -201,7 +201,11 @@ class TemplateMixin:
             
             for element in template_data['elements']:
                 if isinstance(element, TextElement):
-                    graphics_item = GraphicsTextItem(element, dpi=self.canvas.dpi)
+                    graphics_item = GraphicsTextItem(
+                        element,
+                        dpi=self.canvas.dpi,
+                        canvas=self.canvas,
+                    )
                 elif isinstance(element, BarcodeElement):
                     graphics_item = GraphicsBarcodeItem(element, dpi=self.canvas.dpi)
                 elif isinstance(element, ImageElement):

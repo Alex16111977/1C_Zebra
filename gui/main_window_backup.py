@@ -176,7 +176,11 @@ class MainWindow(QMainWindow):
         text_element = TextElement(config, "New Text", font_size=25)
         
         # Создать графический элемент
-        graphics_item = GraphicsTextItem(text_element, dpi=self.canvas.dpi)
+        graphics_item = GraphicsTextItem(
+            text_element,
+            dpi=self.canvas.dpi,
+            canvas=self.canvas,
+        )
         # Установить snap согласно текущему состоянию
         graphics_item.snap_enabled = self.snap_enabled
         
@@ -547,7 +551,11 @@ class MainWindow(QMainWindow):
             for element in template_data['elements']:
                 # Создать графический элемент
                 if isinstance(element, TextElement):
-                    graphics_item = GraphicsTextItem(element, dpi=self.canvas.dpi)
+                    graphics_item = GraphicsTextItem(
+                        element,
+                        dpi=self.canvas.dpi,
+                        canvas=self.canvas,
+                    )
                 elif isinstance(element, BarcodeElement):
                     graphics_item = GraphicsBarcodeItem(element, dpi=self.canvas.dpi)
                 elif isinstance(element, ImageElement):
@@ -894,7 +902,11 @@ class MainWindow(QMainWindow):
     def _create_graphics_item(self, element):
         """Створити graphics item для елемента"""
         if isinstance(element, TextElement):
-            graphics_item = GraphicsTextItem(element, dpi=self.canvas.dpi)
+            graphics_item = GraphicsTextItem(
+                element,
+                dpi=self.canvas.dpi,
+                canvas=self.canvas,
+            )
         else:
             from core.elements.barcode_element import BarcodeElement, GraphicsBarcodeItem
             if isinstance(element, BarcodeElement):
